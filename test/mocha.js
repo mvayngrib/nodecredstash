@@ -49,27 +49,29 @@ if (args.indexOf('junit') >= 0) {
  * Add coverage reports when testing.
  */
 if (args.indexOf('coverage') >= 0) {
-  const instrumenter = new istanbul.Instrumenter();
-  const collector = new istanbul.Collector();
+  console.warn('coverage disabled at the moment!')
 
-  const coberturaReport = istanbul.Report.create('cobertura', { dir: testOuputFolder });
-  const lcovReport = istanbul.Report.create('lcov', { dir: testOuputFolder });
+//   const instrumenter = new istanbul.Instrumenter();
+//   const collector = new istanbul.Collector();
 
-  istanbul.matcherFor({
-    includes: ['**/*.js'],
-    excludes: ['**/test/**', '**/node_modules/**'],
-  }, (error, matcher) => {
-    istanbul.hook.hookRequire(matcher, instrumenter.instrumentSync.bind(instrumenter));
+//   const coberturaReport = istanbul.Report.create('cobertura', { dir: testOuputFolder });
+//   const lcovReport = istanbul.Report.create('lcov', { dir: testOuputFolder });
 
-    startMocha((results) => {
-      collector.add(__coverage__); // eslint-disable-line no-undef
+//   istanbul.matcherFor({
+//     includes: ['**/*.js'],
+//     excludes: ['**/test/**', '**/node_modules/**'],
+//   }, (error, matcher) => {
+//     istanbul.hook.hookRequire(matcher, instrumenter.instrumentSync.bind(instrumenter));
 
-      lcovReport.on('done', () => process.exit(results));
-      coberturaReport.on('done', () => lcovReport.writeReport(collector));
+//     startMocha((results) => {
+//       collector.add(__coverage__); // eslint-disable-line no-undef
 
-      coberturaReport.writeReport(collector);
-    });
-  });
+//       lcovReport.on('done', () => process.exit(results));
+//       coberturaReport.on('done', () => lcovReport.writeReport(collector));
+
+//       coberturaReport.writeReport(collector);
+//     });
+//   });
 } else {
   startMocha();
 }
