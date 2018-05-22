@@ -6,4 +6,5 @@ module.exports = {
   DEFAULT_KMS_KEY: 'alias/credstash',
   PAD_LEN: 19,
   DEFAULT_DIGEST: 'SHA256',
+  DEFAULT_ALGORITHM: 'aes-256-ctr',
 };

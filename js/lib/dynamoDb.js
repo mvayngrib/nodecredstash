@@ -1,37 +1,41 @@
-'use strict';
+'use strict'
 
-const AWS = require('aws-sdk');
+const AWS = require('aws-sdk')
 
-const debug = require('debug')('credstash');
+const debug = require('debug')('credstash')
 
-const utils = require('./utils');
+const utils = require('./utils')
 
 function combineResults(curr, next) {
   if (!curr) {
-    return next;
+    return next
   }
 
   const combined = Object.assign({}, next, {
     Items: curr.Items.concat(next.Items),
     Count: curr.Count + next.Count,
-  });
+  })
 
-  return combined;
+  return combined
 }
 
 
 function pageResults(that, fn, parameters, curr) {
-  const params = Object.assign({}, parameters);
+  const params = Object.assign({}, parameters)
 
   if (curr) {
-    params.ExclusiveStartKey = curr.LastEvaluatedKey;
+    params.ExclusiveStartKey = curr.LastEvaluatedKey
   }
+
   return utils.asPromise(that, fn, params)
     .then((next) => {
-      const combined = combineResults(curr, next);
-      const nextStep = next.LastEvaluatedKey ? pageResults(that, fn, params, combined) : combined;
-      return nextStep;
-    });
+      const combined = combineResults(curr, next)
+      if (next.LastEvaluatedKey) {
+        return pageResults(that, fn, params, combined)
+      }
+
+      return combined.Items
+    })
 }
 
 function createAllVersionsQuery(table, name) {
@@ -46,26 +50,26 @@ function createAllVersionsQuery(table, name) {
     ExpressionAttributeValues: {
       ':name': name,
     },
-  };
-  return params;
+  }
+  return params
 }
 
 function DynamoDB(table, awsOpts) {
-  const awsConfig = Object.assign({}, awsOpts);
-  const docClient = new AWS.DynamoDB.DocumentClient(awsConfig);
-  const ddb = new AWS.DynamoDB(awsConfig);
+  const awsConfig = Object.assign({}, awsOpts)
+  const docClient = new AWS.DynamoDB.DocumentClient(awsConfig)
+  const ddb = new AWS.DynamoDB(awsConfig)
 
   this.getAllVersions = (name, opts) => {
-    const options = Object.assign({}, opts);
-    const params = createAllVersionsQuery(table, name);
-    params.Limit = options.limit;
+    const options = Object.assign({}, opts)
+    const params = createAllVersionsQuery(table, name)
+    params.Limit = options.limit
 
-    return pageResults(docClient, docClient.query, params);
-  };
+    return pageResults(docClient, docClient.query, params)
+  }
 
 
   this.getAllSecretsAndVersions = (opts) => {
-    const options = Object.assign({}, opts);
+    const options = Object.assign({}, opts)
     const params = {
       TableName: table,
       Limit: options.limit,
@@ -74,24 +78,27 @@ function DynamoDB(table, awsOpts) {
         '#name': 'name',
         '#version': 'version',
       },
-    };
-    return pageResults(docClient, docClient.scan, params);
-  };
+    }
+    return pageResults(docClient, docClient.scan, params)
+  }
 
   this.getLatestVersion = (name) => {
-    const params = createAllVersionsQuery(table, name);
-    params.Limit = 1;
+    const params = createAllVersionsQuery(table, name)
+    params.Limit = 1
 
-    return utils.asPromise(docClient, docClient.query, params);
-  };
+    return docClient.query(params).promise()
+      .then(({ Items }) => Items[0])
+  }
 
   this.getByVersion = (name, version) => {
     const params = {
       TableName: table,
       Key: { name, version },
-    };
-    return utils.asPromise(docClient, docClient.get, params);
-  };
+    }
+
+    return docClient.get(params).promise()
+      .then(({ Item }) => Item)
+  }
 
   this.createSecret = (item) => {
     const params = {
@@ -102,17 +109,19 @@ function DynamoDB(table, awsOpts) {
       ExpressionAttributeNames: {
         '#name': 'name',
       },
-    };
-    return utils.asPromise(docClient, docClient.put, params);
-  };
+    }
+
+    return docClient.put(params).promise()
+  }
 
   this.deleteSecret = (name, version) => {
     const params = {
       TableName: table,
       Key: { name, version },
-    };
-    return utils.asPromise(docClient, docClient.delete, params);
-  };
+    }
+
+    return docClient.delete(params).promise()
+  }
 
   this.createTable = () => {
     const params = {
@@ -141,23 +150,23 @@ function DynamoDB(table, awsOpts) {
         ReadCapacityUnits: 1,
         WriteCapacityUnits: 1,
       },
-    };
+    }
 
     return utils.asPromise(ddb, ddb.describeTable, { TableName: table })
       .then(() => debug('Credential Store table already exists'))
       .catch((err) => {
         if (err.code != 'ResourceNotFoundException') {
-          throw err;
+          throw err
         }
-        debug('Creating table...');
+        debug('Creating table...')
         return utils.asPromise(ddb, ddb.createTable, params)
           .then(() => debug('Waiting for table to be created...'))
           .then(() => new Promise(resolve => setTimeout(resolve, 2e3)))
           .then(() => utils.asPromise(ddb, ddb.waitFor, 'tableExists', { TableName: table }))
           .then(() => debug('Table has been created ' +
-            'Go read the README about how to create your KMS key'));
-      });
-  };
+            'Go read the README about how to create your KMS key'))
+      })
+  }
 }
 
-module.exports = DynamoDB;
+module.exports = DynamoDB

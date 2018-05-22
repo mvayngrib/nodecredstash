@@ -5,13 +5,14 @@ module.exports = {
     name: 'quotation',
     version: '0000000000000000001',
     key: 'quotationKey',
-    plainText: `"Neque porro quisquam est qui dolorem ipsum quia dolor sit amet, consectetur, adipisci velit..."
+    iv: Buffer.from('this is 16 bytes'),
+    plaintext: `"Neque porro quisquam est qui dolorem ipsum quia dolor sit amet, consectetur, adipisci velit..."
 "There is no one who loves pain itself, who seeks after it and wants to have it, simply because it is pain..."`,
-    contents: 'WfAxFvTQQaAWaLj7BgFeYc6wtpqdoaT0hLfT8gQyo2FHKEcEBETUG7f2sQpSkjZzo7660h0POrVYTG26I5xsmzbX7fJkzZ7qDbtsti/ucF7GUpyJTN6PQIbrfEPH7F5zYV7dUeca/awLUZJOq1qDqGYy6hCBdJqh2KnPDLc4Ewl5r00wXNQBzYf5w1JVmNLS3vfOM20wY5js3pLdcYUa/XdrfO8jg2JcRZbsL1dQWUDCK9SesI0CHyiMwJCMkBLq9BwiNzJZayzjIrfF65rw',
-    hmacMd5: '570ae3cf8d5bf0c0b26bfea941a84bfb',
-    hmacSha256: '74feaf25b284d319aa1342ebaadca39813465895ad4f924c2e7e45a77ee0b010',
-    hmacSha512: '61f7bb0d82cb8dee073529fc6a5c99486ca81b1a3800dd08f569afe381ab78f7a6eb32276491b0a8c47a9d6bf9446d731cb9a82e002b3c46349cbcba1d4bb999',
-    kms: {
+    contents: 'gRTr/ifn6aiALfQBnFmEHUoe+O98yljkrq4+6Apcif8KCJfvkFtNnyVomD01nTm176jq+26V+gui3PpwfOLzY3OK7KUSBa8P31rd+xgccSQ++gCqWdHSEa37+D2VScovK3cKHKTJfDceypVOWbOLVDa+8hmKZo5VU9fmXItsL7OPjiBghSEkDhvnq6c3VSFLarTvaHHqQmaIVyZnYL1smdT5WtY2Oka86TgNMhY2NwT8Uetxl0ZxHbvC1lemnxbFYoBcr/u5InbPfDPcUezV:dGhpcyBpcyAxNiBieXRlcw==',
+    hmacMd5: '04b92fee316d2d8c630a7d1b42b51fb9',
+    hmacSha256: '84024424e3f6fd6e26efd941e0d9a9eea83a99ed7178f22f80ab42fbadc75f3c',
+    hmacSha512: '158bf7dc5e45dba1e9ee46cc5a45d9c62aa44dc2aec0719f421cd1138ffce45a645a9bc0adaf60b8e8453c92dfb4b1c533bdda32ed4531bbd1ca3a80ab601d2b',
+    kmsData: {
       get Plaintext() {
         return Buffer.from('Expenses as material breeding insisted building to in. Continual', 'UTF8');
       },
@@ -22,10 +23,11 @@ module.exports = {
   },
   credstashKey: {
     name: 'some.secret.apiKey',
-    contents: 'RPg3JNZPfZJZ80pq7qQ=',
+    contents: 'DxOwcbT+hoAp4qvCmIA=:dGhpcyBpcyAxNiBieXRlcw==',
     version: '0000000000000000001',
-    hmac: '910af4beee82fc5717cddf28c7c16c38d3c2e74424b3cc928869b28293ab937e',
+    hmac: 'f173a011f764cdc9066dcfcfa04f9722af495ec5bb5ac72aef680732a16f7e82',
     digest: 'SHA256',
+    iv: Buffer.from('this is 16 bytes'),
     get key() {
       return Buffer.from([
         254,
@@ -46,8 +48,8 @@ module.exports = {
         252,
       ]).toString('base64');
     },
-    plainText: 'someLongAPIKey',
-    kms: {
+    plaintext: 'someLongAPIKey',
+    kmsData: {
       get CiphertextBlob() {
         return Buffer.from([
           254,

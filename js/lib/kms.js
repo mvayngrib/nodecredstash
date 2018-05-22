@@ -13,7 +13,7 @@ function KMS(kmsKey, awsOpts) {
       EncryptionContext: context,
     };
 
-    return utils.asPromise(kms, kms.decrypt, params);
+    return kms.decrypt(params).promise();
   };
 
   this.getEncryptionKey = (context) => {
@@ -23,7 +23,7 @@ function KMS(kmsKey, awsOpts) {
       KeyId: kmsKey,
     };
 
-    return utils.asPromise(kms, kms.generateDataKey, params);
+    return kms.generateDataKey(params).promise();
   };
 }
 

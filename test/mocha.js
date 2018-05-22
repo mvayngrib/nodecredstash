@@ -9,7 +9,7 @@ const rmrf = require('rimraf');
 /**
  * Specify files needed for testing
  */
-const files = glob.sync('./js/**/*.spec.js');
+const files = glob.sync('./js/**/index.spec.js');
 const testOuputFolder = './test/results/';
 rmrf.sync(testOuputFolder);
 

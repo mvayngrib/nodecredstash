@@ -10,7 +10,7 @@
   "scripts": {
     "test": "npm run lint && npm run coverage",
     "coverage": "node ./test/mocha.js junit coverage",
-    "lint": "./node_modules/.bin/eslint ."
+    "lint": "./node_modules/.bin/eslint --quiet ."
   },
   "keywords": [
     "credstash",
