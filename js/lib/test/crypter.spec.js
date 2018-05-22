@@ -12,7 +12,14 @@ const decrypter = crypter
 
 describe('encrypter/decrypter', () => {
   const encryptedItem = encryption.item;
-  let kmsData, iv, plaintext, contents, encrypt, decrypt, encDefaults, decDefaults
+  let kmsData
+  let iv
+  let plaintext
+  let contents
+  let encrypt
+  let decrypt
+  let encDefaults
+  let decDefaults
   beforeEach(() => {
     ({
       kmsData,
@@ -90,8 +97,8 @@ describe('encrypter/decrypter', () => {
         digest: 'SHA256',
       };
 
-      const plaintext = decrypt({ item: stash });
-      plaintext.should.equal(plaintext);
+      const decrypted = decrypt({ item: stash });
+      decrypted.should.equal(plaintext);
     });
 
     it(`can decrypt ${encryptedItem.name} with SHA512 digest`, () => {
@@ -102,8 +109,8 @@ describe('encrypter/decrypter', () => {
         digest: 'SHA512',
       };
 
-      const plaintext = decrypt({ item: stash });
-      plaintext.should.equal(plaintext);
+      const decrypted = decrypt({ item: stash });
+      decrypted.should.equal(plaintext);
     });
 
     it(`can decrypt ${encryptedItem.name} with MD5 digest`, () => {
@@ -114,8 +121,8 @@ describe('encrypter/decrypter', () => {
         digest: 'MD5',
       };
 
-      const plaintext = decrypt({ item: stash });
-      plaintext.should.equal(plaintext);
+      const decrypted = decrypt({ item: stash });
+      decrypted.should.equal(plaintext);
     });
 
     it('will throw an exception if the contents has been messed with', () => {
@@ -127,8 +134,8 @@ describe('encrypter/decrypter', () => {
       };
 
       try {
-        const plaintext = decrypt({ item: stash });
-        plaintext.should.not.exist;
+        const decrypted = decrypt({ item: stash });
+        decrypted.should.not.exist;
       } catch (e) {
         e.message.should.contain('does not match stored HMAC');
       }
