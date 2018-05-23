@@ -45,7 +45,9 @@ describe('s3 store', () => {
       })
 
       if (params.ContinuationToken) {
-        const offset = results.findIndex(item => getContinuationToken(item) === params.ContinuationToken)
+        const offset = results.findIndex(item =>
+          getContinuationToken(item) === params.ContinuationToken)
+
         results = results.slice(offset)
       }
 
@@ -68,7 +70,9 @@ describe('s3 store', () => {
       let results = items.filter(item => params.KeyMarker === store._key(item.name))
       let NextVersionIdMarker
       if (params.VersionIdMarker) {
-        const offset = results.findIndex(item => getVersionIdMarker(item) === params.VersionIdMarker)
+        const offset = results.findIndex(item =>
+          getVersionIdMarker(item) === params.VersionIdMarker)
+
         results = results.slice(offset)
       }
 
