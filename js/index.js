@@ -99,6 +99,11 @@ class Credstash {
       .then(version => utils.paddedInt(defaults.PAD_LEN, version + 1))
   }
 
+  // alias
+  put(opts) {
+    return this.putSecret(opts)
+  }
+
   async putSecret(opts) {
     const options = Object.assign({}, opts)
     const {
@@ -125,7 +130,7 @@ class Credstash {
     let kmsData
     try {
       kmsData = await this.kms.getEncryptionKey(context)
-    } catch(err) {
+    } catch (err) {
       if (err.code == 'NotFoundException') {
         throw err
       }
@@ -137,7 +142,7 @@ class Credstash {
     const secretOpts = Object.assign({ name, version }, data)
     try {
       return await this.store.createSecret(secretOpts)
-    } catch(err) {
+    } catch (err) {
       if (err.code == 'ConditionalCheckFailedException') {
         throw new Error(`${name} version ${version} is already in the credential store.`)
       } else {
@@ -189,6 +194,11 @@ class Credstash {
       version: stash.version,
       secret: this.crypter.decrypt({ item: stash, kmsData: stash.decryptedDataKey }),
     }))
+  }
+
+  // alias
+  get(opts) {
+    return this.getSecret(opts)
   }
 
   getSecret(opts) {
@@ -249,6 +259,11 @@ class Credstash {
     }
     debug(`Deleting ${name} -- version ${version}`)
     return this.store.deleteSecret(name, version)
+  }
+
+  // alias
+  list() {
+    return this.listSecrets()
   }
 
   listSecrets() {
