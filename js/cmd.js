@@ -4,12 +4,13 @@ const AWS = require('aws-sdk')
 const createCredstash = require('./')
 const defaults = require('./defaults')
 
-const toContext = args => {
+const toContext = str => {
   const context = {}
-  args.forEach(arg => {
-    const [k, v] = arg.split('=')
-    context[k] = v
-  })
+  str.split(',')
+    .map(pair => pair.trim().split('='))
+    .forEach(([k, v]) => {
+      context[k] = v
+    })
 
   return context
 }
@@ -24,6 +25,7 @@ const args = require('minimist')(process.argv.slice(2), {
     a: 'algorithm',
     v: 'version',
     e: 'encoding',
+    c: 'context',
   },
   default: {
     algorithm: defaults.DEFAULT_ALGORITHM,
@@ -48,6 +50,7 @@ const {
   algorithm,
   digest,
   encoding,
+  context,
 } = args
 
 const awsClientOpts = {}
@@ -69,11 +72,11 @@ switch (method) {
     opts.name = opArgs.shift()
     opts.secret = Buffer.from(opArgs.shift())
     opts.digest = digest
-    opts.context = toContext(opArgs)
+    opts.context = toContext(context)
     break
   case 'get':
     opts.name = opArgs.shift()
-    opts.context = toContext(opArgs)
+    opts.context = toContext(context)
     break
   case 'list':
     if (opArgs.length && !opArgs[0].includes('=')) {
