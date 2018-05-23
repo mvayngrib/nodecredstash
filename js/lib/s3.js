@@ -63,7 +63,7 @@ const pageResults = async (s3, opts={}) => {
   return _.flattenDeep(batches)
 }
 
-class S3 {
+class Store {
   constructor({ client, bucket, folder='' }) {
     this.client = client
     this.bucket = bucket
@@ -164,4 +164,4 @@ class S3 {
   }
 }
 
-module.exports = opts => new S3(opts)
+module.exports = opts => new Store(opts)

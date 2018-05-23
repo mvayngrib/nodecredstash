@@ -244,7 +244,7 @@ class Credstash {
 
   listSecrets() {
     return this.store.getAllSecretsAndVersions()
-      .then(res => res.sort(utils.sortSecrets))
+      .then(res => res.slice().sort(utils.sortSecrets))
   }
 
   getAllSecrets(opts) {

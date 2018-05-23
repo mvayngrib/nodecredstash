@@ -6,7 +6,7 @@ require('../../test/setup');
 
 const crypto = require('crypto')
 const _ = require('lodash');
-const Store = require('../s3');
+const createS3Store = require('../s3');
 
 const rawAWS = require('aws-sdk')
 const AWS = require('aws-sdk-mock');
@@ -15,6 +15,8 @@ let items
 
 const hasher = data => crypto.createHash('sha256').update(data).digest('hex')
 const getVersionId = item => hasher(item.name + ':' + item.version)
+const getContinuationToken = item => hasher(getVersionId(item))
+const getVersionIdMarker = item => hasher(getVersionId(item))
 
 describe('s3 store', () => {
   const bucket = 'mybucket'
@@ -29,33 +31,65 @@ describe('s3 store', () => {
   })
 
   const mockListObjectVersions = () => {
+    const pageSize = 1
+
     AWS.mock('S3', 'listObjectsV2', (params, cb) => {
       const filtered = params.Prefix
         ? items.filter(item => item.name.startsWith(params.Prefix))
         : items.slice()
 
       const byName = _.groupBy(filtered, 'name')
-      const maxes = []
+      let results = []
       Object.values(byName).forEach(group => {
-        maxes.push(_.maxBy(group, 'version'))
+        results.push(_.maxBy(group, 'version'))
       })
 
+      if (params.ContinuationToken) {
+        const offset = results.findIndex(item => getContinuationToken(item) === params.ContinuationToken)
+        results = results.slice(offset)
+      }
+
+      let NextContinuationToken
+      const nextPageTopItem = results[pageSize]
+      if (nextPageTopItem) {
+        NextContinuationToken = getContinuationToken(nextPageTopItem)
+      }
+
+      const IsTruncated = results.length > pageSize
+      results = results.slice(0, pageSize)
       cb(null, {
-        Contents: maxes.map(toObject)
+        IsTruncated,
+        NextContinuationToken,
+        Contents: results.map(toObject)
       })
     })
 
     AWS.mock('S3', 'listObjectVersions', (params, cb) => {
-      const filtered = items.filter(item => params.KeyMarker === store._key(item.name))
+      let results = items.filter(item => params.KeyMarker === store._key(item.name))
+      let NextVersionIdMarker
+      if (params.VersionIdMarker) {
+        const offset = results.findIndex(item => getVersionIdMarker(item) === params.VersionIdMarker)
+        results = results.slice(offset)
+      }
+
+      const nextPageTopItem = results[pageSize]
+      if (nextPageTopItem) {
+        NextVersionIdMarker = getVersionIdMarker(nextPageTopItem)
+      }
+
+      const IsTruncated = results.length > pageSize
+      results = results.slice(0, pageSize)
       cb(null, {
-        Versions: filtered.map(toObject)
+        IsTruncated,
+        NextVersionIdMarker,
+        Versions: results.map(toObject)
       })
     })
   }
 
   const mockGetObject = () => {
     AWS.mock('S3', 'getObject', (params, cb) => {
-      const item = items.reverse().find(candidate => {
+      const item = items.slice().reverse().find(candidate => {
         if (params.VersionId) {
           return getVersionId(candidate) === params.VersionId
         }
@@ -85,7 +119,7 @@ describe('s3 store', () => {
     mockListObjectVersions()
 
     client = new rawAWS.S3({ region: 'us-east-1' })
-    store = new Store({ client, bucket, folder, });
+    store = createS3Store({ client, bucket, folder, });
   });
 
   afterEach(() => {
