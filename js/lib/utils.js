@@ -82,7 +82,7 @@ const utils = {
     })
   },
 
-  mapPromise(array, fn) {
+  series(array, fn) {
     let idx = 0
     const results = []
 

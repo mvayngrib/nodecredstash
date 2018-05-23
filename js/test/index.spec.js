@@ -227,14 +227,17 @@ describe('index', () => {
         .then(version => version.should.equal(0))
     })
 
-    it('should reject a missing name', () => {
+    it('should reject a missing name', async () => {
       AWS.mock('DynamoDB.DocumentClient', 'query', (params, cb) => cb(new Error('Error')))
       const credstash = defCredstash()
-      return credstash.getHighestVersion()
-        .then(() => {
-          throw new Error('Error')
-        })
-        .catch(err => err.message.should.contain('name is a required parameter'))
+      try {
+        await credstash.getHighestVersion()
+      } catch (err) {
+        err.message.should.contain('is a required parameter')
+        return
+      }
+
+      throw new Error('expected error')
     })
   })
 
@@ -458,7 +461,7 @@ describe('index', () => {
       AWS.mock('KMS', 'generateDataKey', (params, cb) => cb(new Error('Error')))
       const credstash = defCredstash()
       return credstash.putSecret()
-        .catch(err => err.message.should.equal('name is a required parameter'))
+        .catch(err => err.message.should.contain('is a required parameter'))
     })
 
     it('should reject a missing name', () => {
@@ -467,7 +470,7 @@ describe('index', () => {
       return credstash.putSecret({
         secret: 'secret',
       })
-        .catch(err => err.message.should.equal('name is a required parameter'))
+        .catch(err => err.message.should.contain('is a required parameter'))
     })
 
     it('should reject a missing secret', () => {
@@ -489,7 +492,7 @@ describe('index', () => {
         limit,
       })
         .then(() => { throw new Error('Error') })
-        .catch(err => err.message.should.equal('name is a required parameter'))
+        .catch(err => err.message.should.contain('is a required parameter'))
     })
 
     it('should fetch and decode the secrets', () => {
@@ -596,7 +599,7 @@ describe('index', () => {
         .then(() => {
           throw new Error('Should not succeed')
         })
-        .catch(err => err.message.should.contain('name is a required parameter'))
+        .catch(err => err.message.should.contain('is a required parameter'))
     })
 
     it('should reject a missing name with default options', () => {
@@ -605,7 +608,7 @@ describe('index', () => {
         .then(() => {
           throw new Error('Should not succeed')
         })
-        .catch(err => err.message.should.contain('name is a required parameter'))
+        .catch(err => err.message.should.contain('is a required parameter'))
     })
 
     it('should not reject a missing version', () => {
@@ -799,7 +802,7 @@ describe('index', () => {
       const credstash = defCredstash()
       return credstash.deleteSecrets()
         .then(res => expect(res).to.not.exist)
-        .catch(err => err.message.should.equal('name is a required parameter'))
+        .catch(err => err.message.should.contain('is a required parameter'))
     })
 
     it('should reject missing name', () => {
@@ -808,16 +811,17 @@ describe('index', () => {
       const credstash = defCredstash()
       return credstash.deleteSecrets({})
         .then(res => expect(res).to.not.exist)
-        .catch(err => err.message.should.equal('name is a required parameter'))
+        .catch(err => err.message.should.contain('is a required parameter'))
     })
 
-    it('should delete all versions of a given name', () => {
+    it('should delete all versions of a given name', async () => {
       const name = 'name'
       const Items = Array.from({ length: 10 }, (v, i) => ({ name, version: `${i}` }))
       AWS.mock('DynamoDB.DocumentClient', 'query', (params, cb) => {
         params.ExpressionAttributeValues[':name'].should.equal(name)
         cb(undefined, { Items })
       })
+
       let counter = 0
       AWS.mock('DynamoDB.DocumentClient', 'delete', (params, cb) => {
         params.Key.name.should.equal(name)
@@ -827,10 +831,8 @@ describe('index', () => {
       })
 
       const credstash = defCredstash()
-      return credstash.deleteSecrets({
-        name,
-      })
-        .then(res => res.forEach(next => next.should.equal('Success')))
+      await credstash.deleteSecrets({ name })
+      expect(counter).to.equal(10)
     })
   })
 
@@ -845,7 +847,7 @@ describe('index', () => {
       const credstash = defCredstash()
       return credstash.deleteSecret()
         .then(res => expect(res).to.not.exist)
-        .catch(err => err.message.should.equal('name is a required parameter'))
+        .catch(err => err.message.should.contain('is a required parameter'))
     })
 
     it('should reject a missing name', () => {
@@ -854,7 +856,7 @@ describe('index', () => {
       const credstash = defCredstash()
       return credstash.deleteSecret({ version })
         .then(res => expect(res).to.not.exist)
-        .catch(err => err.message.should.equal('name is a required parameter'))
+        .catch(err => err.message.should.contain('is a required parameter'))
     })
 
     it('should reject missing version', () => {
@@ -863,7 +865,7 @@ describe('index', () => {
       const credstash = defCredstash()
       return credstash.deleteSecret({ name })
         .then(res => expect(res).to.not.exist)
-        .catch(err => err.message.should.equal('version is a required parameter'))
+        .catch(err => err.message.should.contain('is a required parameter'))
     })
 
 

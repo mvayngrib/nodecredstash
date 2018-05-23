@@ -138,7 +138,7 @@ describe('utils', () => {
     });
   });
 
-  describe('#mapPromise', () => {
+  describe('#series', () => {
     it('calls the promises in order', function () {
       this.timeout(10e3);
       const array = Array.from({ length: 5 }, (v, k) => k);
@@ -148,7 +148,7 @@ describe('utils', () => {
         finishedOrder.push(idx);
       }
 
-      return utils.mapPromise(array, i => new Promise(resolve =>
+      return utils.series(array, i => new Promise(resolve =>
         setTimeout(resolve, 100 * (10 - i), i))
         .then(updatFinished))
         .then(() => {

@@ -74,29 +74,26 @@ class Credstash {
    * @returns {Promise.<number>}
    */
 
-  getHighestVersion(opts) {
+  async getHighestVersion(opts) {
     const options = Object.assign({}, opts)
     const { name } = options
     if (!name) {
-      return Promise.reject(new Error('name is a required parameter'))
+      throw new Error('"name" is a required parameter')
     }
 
-    return this.store.getLatestVersion(name)
-      .then((res) => {
-        const { version = 0 } = res || {}
-        return version
-      })
+    const res = await this.store.getLatestVersion(name)
+    const { version = 0 } = res || {}
+    return version
   }
 
-  incrementVersion(opts) {
-    return this.getHighestVersion(opts)
-      .then((version) => {
-        if (Number.parseInt(version, 10) == version) {
-          return Number.parseInt(version, 10)
-        }
-        throw new Error(`Can not autoincrement version. The current version: ${version} is not an int`)
-      })
-      .then(version => utils.paddedInt(defaults.PAD_LEN, version + 1))
+  async incrementVersion(opts) {
+    const version = await this.getHighestVersion(opts)
+    const vInt = Number.parseInt(version, 10)
+    if (vInt == version) {
+      return utils.paddedInt(defaults.PAD_LEN, vInt + 1)
+    }
+
+    throw new Error(`Can not autoincrement version. The current version: ${version} is not an int`)
   }
 
   // alias
@@ -150,25 +147,27 @@ class Credstash {
       }
     }
   }
-  decryptStash(stash, context) {
+  async decryptStash(stash, context) {
     const { key } = stash
-    return this.kms.decrypt(key, context)
-      .catch((err) => {
-        let msg = `Decryption error: ${JSON.stringify(err, null, 2)}`
+    try {
+      return await this.kms.decrypt(key, context)
+    } catch (err) {
+      let msg = `Decryption error: ${JSON.stringify(err, null, 2)}`
 
-        if (err.code == 'InvalidCiphertextException') {
-          if (context) {
-            msg = 'Could not decrypt hmac key with KMS. The encryption ' +
-              'context provided may not match the one used when the ' +
-              'credential was stored.'
-          } else {
-            msg = 'Could not decrypt hmac key with KMS. The credential may ' +
-              'require that an encryption context be provided to decrypt ' +
-              'it.'
-          }
+      if (err.code == 'InvalidCiphertextException') {
+        if (context) {
+          msg = 'Could not decrypt hmac key with KMS. The encryption ' +
+            'context provided may not match the one used when the ' +
+            'credential was stored.'
+        } else {
+          msg = 'Could not decrypt hmac key with KMS. The credential may ' +
+            'require that an encryption context be provided to decrypt ' +
+            'it.'
         }
-        throw new Error(msg)
-      })
+      }
+
+      throw new Error(msg)
+    }
   }
 
   async getAllVersions(opts) {
@@ -180,7 +179,7 @@ class Credstash {
     } = options
 
     if (!name) {
-      return Promise.reject(new Error('name is a required parameter'))
+      throw new Error('"name" is a required parameter')
     }
 
     const results = await this.store.getAllVersions(name, { limit })
@@ -201,62 +200,66 @@ class Credstash {
     return this.getSecret(opts)
   }
 
-  getSecret(opts) {
+  async getSecret(opts) {
     const options = Object.assign({}, opts)
     const {
       name,
       context,
     } = options
     if (!name) {
-      return Promise.reject(new Error('name is a required parameter'))
+      throw new Error('"name" is a required parameter')
     }
-    const version = utils.sanitizeVersion(options.version) // optional
 
-    const func = version == undefined
+    const version = utils.sanitizeVersion(options.version) // optional
+    const promiseStash = version == undefined
       ? this.store.getLatestVersion(name)
       : this.store.getByVersion(name, version)
 
-    return func
-      .then((stash) => {
-        if (!(stash && stash.key)) {
-          throw new Errors.NotFound(`Item {'name': '${name}'} could not be found.`)
-        }
-        return Promise.all([
-          stash,
-          this.decryptStash(stash, context),
-        ])
-      })
-      .then(([item, kmsData]) => this.crypter.decrypt({ item, kmsData }))
+    const stash = await promiseStash
+    if (!(stash && stash.key)) {
+      throw new Errors.NotFound(`Item {'name': '${name}'} could not be found.`)
+    }
+
+    const [item, kmsData] = await Promise.all([
+      stash,
+      this.decryptStash(stash, context),
+    ])
+
+    return this.crypter.decrypt({ item, kmsData })
   }
 
-  deleteSecrets(opts) {
+  async deleteSecrets(opts) {
     const options = Object.assign({}, opts)
     const {
       name,
     } = options
+
     if (!name) {
-      return Promise.reject(new Error('name is a required parameter'))
+      throw new Error('"name" is a required parameter')
     }
 
-    return this.store.getAllVersions(name)
-      .then(secrets => utils.mapPromise(secrets, secret => this.deleteSecret({
-        name: secret.name,
-        version: secret.version,
-      })))
+    const secrets = await this.store.getAllVersions(name)
+    await utils.series(secrets, secret => this.deleteSecret({
+      name: secret.name,
+      version: secret.version,
+    }))
   }
 
-  deleteSecret(opts) {
+  async deleteSecret(opts) {
     const options = Object.assign({}, opts)
     const {
       name,
     } = options
+
     if (!name) {
-      return Promise.reject(new Error('name is a required parameter'))
+      throw new Error('"name" is a required parameter')
     }
+
     const version = utils.sanitizeVersion(options.version)
     if (!version) {
-      return Promise.reject(new Error('version is a required parameter'))
+      throw new Error('"version" is a required parameter')
     }
+
     debug(`Deleting ${name} -- version ${version}`)
     return this.store.deleteSecret(name, version)
   }
@@ -266,14 +269,14 @@ class Credstash {
     return this.listSecrets(opts)
   }
 
-  listSecrets(opts={}) {
+  async listSecrets(opts={}) {
     if (opts.name) return this.store.getAllVersions(opts.name)
 
-    return this.store.getAllSecretsAndVersions()
-      .then(res => res.slice().sort(utils.sortSecrets))
+    const res = await this.store.getAllSecretsAndVersions()
+    return res.slice().sort(utils.sortSecrets)
   }
 
-  getAllSecrets(opts) {
+  async getAllSecrets(opts) {
     const options = Object.assign({}, opts)
     const {
       version,
@@ -282,35 +285,34 @@ class Credstash {
     } = options
 
     const unOrdered = {}
-    return this.listSecrets()
-      .then((secrets) => {
-        const position = {}
-        const filtered = []
-        secrets
-          .filter(secret => secret.version == (version || secret.version))
-          .filter(secret => !startsWith || secret.name.startsWith(startsWith))
-          .forEach((next) => {
-            position[next.name] = position[next.name]
-              ? position[next.name]
-              : filtered.push(next)
-          })
+    const position = {}
 
-        return filtered
+    let secrets = await this.listSecrets()
+    secrets = secrets
+      .filter(secret => secret.version == (version || secret.version))
+      .filter(secret => !startsWith || secret.name.startsWith(startsWith))
+      .filter(next => {
+        if (position[next.name]) return false
+
+        position[next.name] = next
+        return true
       })
-      .then(secrets =>
-        utils.mapPromise(secrets, secret =>
-          this.getSecret({ name: secret.name, version: secret.version, context })
-            .then((plaintext) => {
-              unOrdered[secret.name] = plaintext
-            })
-            .catch(() => undefined)))
-      .then(() => {
-        const ordered = {}
-        Object.keys(unOrdered).sort().forEach((key) => {
-          ordered[key] = unOrdered[key]
-        })
-        return ordered
-      })
+
+    await utils.series(secrets, async (secret) => {
+      try {
+        const plaintext = await this.getSecret({ name: secret.name, version: secret.version, context })
+        unOrdered[secret.name] = plaintext
+      } catch (err) {
+        // ignore
+      }
+    })
+
+    const ordered = {}
+    Object.keys(unOrdered).sort().forEach((key) => {
+      ordered[key] = unOrdered[key]
+    })
+
+    return ordered
   }
 
   createDdbTable() {
