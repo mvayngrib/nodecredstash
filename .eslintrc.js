@@ -14,6 +14,7 @@ module.exports = {
     "strict": "off",
     "prefer-rest-params": "off",
     "prefer-template": "warn",
+    "prefer-destructuring": "warn",
     "react/require-extension": "off",
     "import/no-extraneous-dependencies": "off",
     "class-methods-use-this": "off",

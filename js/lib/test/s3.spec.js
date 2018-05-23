@@ -35,7 +35,7 @@ describe('s3 store', () => {
 
     AWS.mock('S3', 'listObjectsV2', (params, cb) => {
       const filtered = params.Prefix
-        ? items.filter(item => item.name.startsWith(params.Prefix))
+        ? items.filter(item => store._key(item.name).startsWith(params.Prefix))
         : items.slice()
 
       const byName = _.groupBy(filtered, 'name')
@@ -67,7 +67,7 @@ describe('s3 store', () => {
     })
 
     AWS.mock('S3', 'listObjectVersions', (params, cb) => {
-      let results = items.filter(item => params.KeyMarker === store._key(item.name))
+      let results = items.filter(item => params.Prefix === store._key(item.name))
       let NextVersionIdMarker
       if (params.VersionIdMarker) {
         const offset = results.findIndex(item =>

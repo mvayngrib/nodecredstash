@@ -189,7 +189,7 @@ describe('index', () => {
     it('should return the highest version (s3)', async () => {
       const highest = Items[1]
       AWS.mock('S3', 'getObject', (params, cb) => cb(undefined, {
-        Body: s3cred.store._serialize(highest)
+        Body: s3cred.store._serialize(highest) // eslint-disable-line no-use-before-define
       }))
 
       const s3cred = defS3Credstash()

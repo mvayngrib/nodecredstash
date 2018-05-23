@@ -3,6 +3,15 @@ const _ = require('lodash')
 const utils = require('./utils')
 const schema = require('./schema')
 
+const getDigest = digest => {
+  const normalized = digest.toLowerCase()
+  if (!(normalized in schema.Digest)) {
+    throw new Error(`unknown digest: ${digest}`)
+  }
+
+  return schema.Digest[normalized]
+}
+
 const unserialize = buf => {
   const raw = schema.Secret.decode(buf)
   raw.digest = utils.keyByValue(schema.Digest, raw.digest)
@@ -17,7 +26,7 @@ const serialize = item => {
     key,
     contents,
     hmac,
-    digest: schema.Digest[digest],
+    digest: getDigest(digest),
   })
 }
 
@@ -26,7 +35,7 @@ const pageVersions = async ({ client, bucket }, opts={}) => {
   const Bucket = bucket
   const listParams = {
     Bucket,
-    KeyMarker: key
+    Prefix: key,
   }
 
   if (limit) listParams.MaxKeys = limit
@@ -42,7 +51,7 @@ const pageVersions = async ({ client, bucket }, opts={}) => {
   let promiseVersions
   do {
     result = await client.listObjectVersions(listParams).promise()
-    promiseVersions = Promise.all(result.Versions.map(getByVersion))
+    promiseVersions = Promise.all(result.Versions.filter(v => v.Key === key).map(getByVersion))
     promiseContents.push(promiseVersions)
     if (result.NextKeyMarker && result.NextKeyMarker !== key) {
       break
@@ -135,6 +144,7 @@ class Store {
 
   getAllSecretsAndVersions(opts) {
     const options = Object.assign({}, opts)
+    options.prefix = this._key('')
     return pageResults(this, options)
   }
 
