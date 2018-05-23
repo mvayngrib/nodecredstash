@@ -219,7 +219,7 @@ class Credstash {
     return func
       .then((stash) => {
         if (!(stash && stash.key)) {
-          throw new Error(`Item {'name': '${name}'} could not be found.`)
+          throw new Errors.NotFound(`Item {'name': '${name}'} could not be found.`)
         }
         return Promise.all([
           stash,
