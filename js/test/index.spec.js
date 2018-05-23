@@ -154,10 +154,18 @@ describe('index', () => {
       {
         name: 'name1',
         version: 'version1',
+        contents: Buffer.from('contents1'),
+        key: Buffer.from('key1'),
+        hmac: Buffer.from('hmac1'),
+        digest: 'sha256',
       },
       {
         name: 'name1',
         version: 'version2',
+        contents: Buffer.from('contents2'),
+        key: Buffer.from('key2'),
+        hmac: Buffer.from('hmac2'),
+        digest: 'sha256',
       },
     ]
 
@@ -181,7 +189,7 @@ describe('index', () => {
     it('should return the highest version (s3)', async () => {
       const highest = Items[1]
       AWS.mock('S3', 'getObject', (params, cb) => cb(undefined, {
-        Body: Buffer.from(JSON.stringify(highest))
+        Body: s3cred.store._serialize(highest)
       }))
 
       const s3cred = defS3Credstash()
@@ -290,10 +298,10 @@ describe('index', () => {
     it('should create a new stash', () => {
       AWS.mock('KMS', 'generateDataKey', (params, cb) => cb(undefined, realOne.kmsData))
       AWS.mock('DynamoDB.DocumentClient', 'put', (params, cb) => {
-        params.Item.hmac.should.equal(realOne.hmac)
-        params.Item.key.should.equal(realOne.key)
+        params.Item.hmac.should.deep.equal(realOne.hmac)
+        params.Item.key.should.deep.equal(realOne.key)
         params.Item.name.should.equal(realOne.name)
-        params.Item.contents.should.equal(realOne.contents)
+        params.Item.contents.should.deep.equal(realOne.contents)
         params.Item.version.should.equal(realOne.version)
         params.Item.digest.should.equal(realOne.digest)
         cb(undefined, 'Success')
@@ -515,7 +523,7 @@ describe('index', () => {
         limit,
       }).then((allVersions) => {
         allVersions[0].version.should.equal('0000000000000000006')
-        allVersions[0].secret.should.equal(rawItem.plaintext)
+        allVersions[0].secret.should.deep.equal(rawItem.plaintext)
       })
     })
 
@@ -548,7 +556,7 @@ describe('index', () => {
         name,
       }).then((allVersions) => {
         allVersions[0].version.should.equal('0000000000000000006')
-        allVersions[0].secret.should.equal(rawItem.plaintext)
+        allVersions[0].secret.should.deep.equal(rawItem.plaintext)
       })
     })
   })
@@ -579,7 +587,7 @@ describe('index', () => {
         name,
         version,
       })
-        .then(secret => secret.should.equal(rawItem.plaintext))
+        .then(secret => secret.should.deep.equal(rawItem.plaintext))
     })
 
     it('should reject a missing name', () => {
@@ -620,7 +628,7 @@ describe('index', () => {
       })
       const credentials = defCredstash()
       return credentials.getSecret({ name: 'name' })
-        .then(secret => secret.should.equal(rawItem.plaintext))
+        .then(secret => secret.should.deep.equal(rawItem.plaintext))
         .catch(err => expect(err).to.not.exist)
     })
 
@@ -650,7 +658,7 @@ describe('index', () => {
       return credentials.getSecret({
         name: 'name',
       })
-        .then(secret => secret.should.equal(rawItem.plaintext))
+        .then(secret => secret.should.deep.equal(rawItem.plaintext))
         .catch(err => expect(err).to.not.exist)
     })
 
@@ -916,7 +924,8 @@ describe('index', () => {
         name: item.name,
         version: item.version,
       }
-      kms[item.key] = item.kmsData
+
+      kms[item.key.toString('base64')] = item.kmsData
     }
 
     beforeEach(() => {
@@ -932,6 +941,7 @@ describe('index', () => {
           const next = items[name]
           Object.keys(next).forEach(version => Items.push(next[version]))
         })
+
         cb(undefined, { Items })
       })
 
@@ -970,7 +980,7 @@ describe('index', () => {
 
     it('should ignore bad secrets', () => {
       const item3 = Object.assign({}, item1)
-      item3.contents += 'hello broken'
+      item3.contents = Buffer.concat([item3.contents, Buffer.from('hello broken')])
       item3.name = 'differentName'
       addItem(item3)
       const credstash = defCredstash()
@@ -986,12 +996,13 @@ describe('index', () => {
     it('should return all secrets, but only latest version', () => {
       const item3 = Object.assign({}, item1)
       item3.version = item3.version.replace('1', '2')
-      item3.plaintext = 'This is a new plaintext'
+      item3.plaintext = Buffer.from('This is a new plaintext')
       const encrypted = crypter.encrypt({
         algorithm: defaults.DEFAULT_ALGORITHM,
+        digest: defaults.DEFAULT_DIGEST,
         data: item3.plaintext,
         kmsData: item3.kmsData,
-        iv: item3.iv
+        iv: item3.iv,
       })
 
       item3.contents = encrypted.contents
@@ -1003,7 +1014,7 @@ describe('index', () => {
       return credstash.getAllSecrets()
         .then((res) => {
           Object.keys(res).length.should.equal(2)
-          res[item3.name].should.equal(item3.plaintext)
+          res[item3.name].should.deep.equal(item3.plaintext)
         })
     })
   })

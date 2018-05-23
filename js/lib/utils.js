@@ -20,12 +20,9 @@ const utils = {
   calculateHmac(digestArg, key, encrypted) {
     const digest = digestArg || defaults.DEFAULT_DIGEST
     // compute an HMAC using the hmac key and the ciphertext
-    const hmac = crypto.createHmac(digest.toLowerCase(), key)
+    return crypto.createHmac(digest.toLowerCase(), key)
       .update(encrypted) // utf8
       .digest()
-      .toString('hex')
-
-    return hmac
   },
 
   splitKmsKey(buffer) {
@@ -103,6 +100,10 @@ const utils = {
     }
 
     return doNext()
+  },
+
+  keyByValue(obj, value) {
+    return Object.keys(obj).find(key => obj[key] === value)
   },
 }
 

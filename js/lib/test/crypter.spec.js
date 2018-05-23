@@ -1,16 +1,16 @@
-'use strict';
+'use strict'
 
 /* eslint-disable no-unused-expressions, no-undef */
 
-require('../../test/setup');
-const crypter = require('../crypter');
+require('../../test/setup')
+const crypter = require('../crypter')
 const defaults = require('../../defaults')
-const encryption = require('../../test/utils/encryption');
+const encryption = require('../../test/utils/encryption')
 
 const encrypter = crypter
-const decrypter = crypter
+const decrypter = crypter;
 
-;[encryption.itemCtr, encryption.itemGcm].forEach(encryptedItem => {
+[encryption.itemCtr, encryption.itemGcm].forEach(encryptedItem => {
   describe(`encrypter/decrypter ${encryptedItem.algorithm}`, () => {
     let algorithm
     let kmsData
@@ -28,9 +28,9 @@ const decrypter = crypter
         plaintext,
         contents,
         algorithm,
-      } = encryptedItem);
+      } = encryptedItem)
 
-      encDefaults = { algorithm, iv, kmsData, data: plaintext }
+      encDefaults = { algorithm, iv, kmsData, data: plaintext, digest: defaults.DEFAULT_DIGEST }
       encrypt = (opts={}) => encrypter.encrypt({ ...encDefaults, ...opts, })
 
       decDefaults = { algorithm, kmsData }
@@ -39,29 +39,29 @@ const decrypter = crypter
 
     describe('#encrypt', () => {
       it(`can encrypt ${encryptedItem.name} with default HMAC`, () => {
-        const encrypted = encrypt();
-        encrypted.contents.should.equal(encryptedItem.contents);
-        encrypted.hmac.should.equal(encryptedItem.hmacSha256);
-      });
+        const encrypted = encrypt()
+        encrypted.contents.should.deep.equal(encryptedItem.contents)
+        encrypted.hmac.should.deep.equal(encryptedItem.hmacSha256)
+      })
 
       it(`can encrypt ${encryptedItem.name} with explicit SHA256 HMAC`, () => {
-        const encrypted = encrypt({ digest: 'SHA256' });
-        encrypted.contents.should.equal(encryptedItem.contents);
-        encrypted.hmac.should.equal(encryptedItem.hmacSha256);
-      });
+        const encrypted = encrypt({ digest: 'SHA256' })
+        encrypted.contents.should.deep.equal(encryptedItem.contents)
+        encrypted.hmac.should.deep.equal(encryptedItem.hmacSha256)
+      })
 
       it(`can encrypt ${encryptedItem.name} with SHA512 HMAC`, () => {
-        const encrypted = encrypt({ digest: 'SHA512' });
-        encrypted.contents.should.equal(encryptedItem.contents);
-        encrypted.hmac.should.equal(encryptedItem.hmacSha512);
-      });
+        const encrypted = encrypt({ digest: 'SHA512' })
+        encrypted.contents.should.deep.equal(encryptedItem.contents)
+        encrypted.hmac.should.deep.equal(encryptedItem.hmacSha512)
+      })
 
       it(`can encrypt ${encryptedItem.name} with MD5 HMAC`, () => {
-        const encrypted = encrypt({ digest: 'MD5' });
-        encrypted.contents.should.equal(encryptedItem.contents);
-        encrypted.hmac.should.equal(encryptedItem.hmacMd5);
-      });
-    });
+        const encrypted = encrypt({ digest: 'MD5' })
+        encrypted.contents.should.deep.equal(encryptedItem.contents)
+        encrypted.hmac.should.deep.equal(encryptedItem.hmacMd5)
+      })
+    })
 
     describe('#decrypt', () => {
       it(`can decrypt ${encryptedItem.name} with default digest`, () => {
@@ -69,11 +69,11 @@ const decrypter = crypter
           name: 'item',
           hmac: encryptedItem.hmacSha256,
           contents: encryptedItem.contents,
-        };
+        }
 
-        const decrypted = decrypt({ item: stash });
-        decrypted.should.equal(plaintext);
-      });
+        const decrypted = decrypt({ item: stash })
+        decrypted.should.deep.equal(plaintext)
+      })
 
       it(`can decrypt ${encryptedItem.name} with explicit SHA256 digest`, () => {
         const stash = {
@@ -81,11 +81,11 @@ const decrypter = crypter
           hmac: encryptedItem.hmacSha256,
           contents: encryptedItem.contents,
           digest: 'SHA256',
-        };
+        }
 
-        const decrypted = decrypt({ item: stash });
-        decrypted.should.equal(plaintext);
-      });
+        const decrypted = decrypt({ item: stash })
+        decrypted.should.deep.equal(plaintext)
+      })
 
       it(`can decrypt ${encryptedItem.name} with SHA512 digest`, () => {
         const stash = {
@@ -93,11 +93,11 @@ const decrypter = crypter
           hmac: encryptedItem.hmacSha512,
           contents: encryptedItem.contents,
           digest: 'SHA512',
-        };
+        }
 
-        const decrypted = decrypt({ item: stash });
-        decrypted.should.equal(plaintext);
-      });
+        const decrypted = decrypt({ item: stash })
+        decrypted.should.deep.equal(plaintext)
+      })
 
       it(`can decrypt ${encryptedItem.name} with MD5 digest`, () => {
         const stash = {
@@ -105,11 +105,11 @@ const decrypter = crypter
           hmac: encryptedItem.hmacMd5,
           contents: encryptedItem.contents,
           digest: 'MD5',
-        };
+        }
 
-        const decrypted = decrypt({ item: stash });
-        decrypted.should.equal(plaintext);
-      });
+        const decrypted = decrypt({ item: stash })
+        decrypted.should.deep.equal(plaintext)
+      })
 
       it('will throw an exception if the contents has been messed with', () => {
         const stash = {
@@ -117,20 +117,20 @@ const decrypter = crypter
           hmac: encryptedItem.hmacMd5,
           contents: `${encryptedItem.contents}some junk`,
           digest: 'MD5',
-        };
+        }
 
         try {
-          const decrypted = decrypt({ item: stash });
-          decrypted.should.not.exist;
+          const decrypted = decrypt({ item: stash })
+          decrypted.should.not.exist
         } catch (e) {
-          e.message.should.contain('does not match stored HMAC');
+          e.message.should.contain('does not match stored HMAC')
         }
-      });
-    });
-  });
-})
+      })
+    })
+  })
+});
 
-;[encryption.credstashKeyCtr, encryption.credstashKeyGcm].forEach(credstashKey => {
+[encryption.credstashKeyCtr, encryption.credstashKeyGcm].forEach(credstashKey => {
   describe(`low level ${credstashKey.algorithm}`, () => {
     const {
       algorithm,
@@ -138,8 +138,8 @@ const decrypter = crypter
     } = credstashKey
 
     describe('#encryptAes', () => {
-      const encryptAes = encrypter.encryptAes.bind(encrypter);
-      const item = credstashKey;
+      const encryptAes = encrypter.encryptAes.bind(encrypter)
+      const item = credstashKey
 
       it('correctly encrypts a key', () => {
         const encrypted = encryptAes({
@@ -147,15 +147,15 @@ const decrypter = crypter
           key: item.kmsData.Plaintext.slice(0, 32),
           data: item.plaintext,
           iv
-        });
+        })
 
-        encrypted.should.equal(item.contents);
-      });
-    });
+        encrypted.should.deep.equal(item.contents)
+      })
+    })
 
     describe('#decryptAes', () => {
-      const decryptAes = decrypter.decryptAes.bind(decrypter);
-      const credstashItem = credstashKey;
+      const decryptAes = decrypter.decryptAes.bind(decrypter)
+      const credstashItem = credstashKey
 
       it('correctly encrypts a key', () => {
         const decrypted = decryptAes({
@@ -163,10 +163,10 @@ const decrypter = crypter
           key: credstashItem.kmsData.Plaintext.slice(0, 32),
           data: credstashItem.contents,
           iv
-        });
+        })
 
-        decrypted.should.equal(credstashItem.plaintext);
-      });
-    });
+        decrypted.should.deep.equal(credstashItem.plaintext)
+      })
+    })
   })
 })

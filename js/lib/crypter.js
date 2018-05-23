@@ -1,26 +1,29 @@
 'use strict'
 
+const pick = require('lodash/pick')
 const crypto = require('crypto')
 const utils = require('./utils')
+const schema = require('./schema')
 
-const CIPHERTEXT_ENCODING = 'base64'
+// const CIPHERTEXT_ENCODING = 'base64'
 const PLAINTEXT_ENCODING = 'utf8'
 const ALG_CTR = 'aes-256-ctr'
 const ALG_GCM = 'aes-256-gcm'
 
+const ENCRYPTED_OBJECT_KEYS = [
+  'ciphertext',
+  'iv',
+  'tag'
+]
+
 const createIV = bytes => crypto.randomBytes(bytes)
-const serialize = (...parts) => parts
-  .map(part => {
-    if (typeof part === 'string') return part
+const serializeEncrypted = parts =>
+  schema.EncryptedObject.encode(pick(parts, ENCRYPTED_OBJECT_KEYS))
 
-    return part.toString(CIPHERTEXT_ENCODING)
-  })
-  .join(':')
-
-const unserialize = str => str
-  .split(':')
-  .map(part => utils.b64decode(part))
-
+const unserializeEncrypted = buf => schema.EncryptedObject.decode(buf)
+const requireOption = (name, value) => {
+  if (!value) throw new Error(`missing option "${name}"`)
+}
 
 class Crypter {
   constructor(algorithm) {
@@ -43,28 +46,37 @@ class Crypter {
 
   encryptCtr({ key, data, iv=createIV(16) }) {
     const cipher = crypto.createCipheriv(ALG_CTR, key, iv)
-    const ciphertext = cipher.update(data, PLAINTEXT_ENCODING, CIPHERTEXT_ENCODING) +
-      cipher.final(CIPHERTEXT_ENCODING)
+    const ciphertext = Buffer.concat([
+      cipher.update(data, PLAINTEXT_ENCODING),
+      cipher.final()
+    ])
 
-    return serialize(ciphertext, iv)
+    return serializeEncrypted({ ciphertext, iv })
   }
 
   encryptGcm({ key, data, iv=createIV(12) }) {
     const cipher = crypto.createCipheriv(ALG_GCM, key, iv)
-    const ciphertext = cipher.update(data, PLAINTEXT_ENCODING, CIPHERTEXT_ENCODING) +
-      cipher.final(CIPHERTEXT_ENCODING)
+    const ciphertext = Buffer.concat([
+      cipher.update(data, PLAINTEXT_ENCODING),
+      cipher.final()
+    ])
 
     const tag = cipher.getAuthTag()
-    return serialize(ciphertext, iv, tag)
+    return serializeEncrypted({ ciphertext, iv, tag })
   }
 
-  encrypt({ digest, data, iv, kmsData }) {
+  encrypt({ data, kmsData, digest, iv }) {
+    requireOption('data', data)
+    requireOption('kmsData', kmsData)
+    requireOption('digest', digest)
+
+    if (!Buffer.isBuffer(data)) {
+      throw new Error('expected buffer "data"')
+    }
+
     const keys = utils.splitKmsKey(kmsData.Plaintext)
-
     const wrappedKey = kmsData.CiphertextBlob
-
-    const key = utils.b64encode(wrappedKey)
-
+    const key = utils.b64decode(wrappedKey)
     const contents = this.encryptAes({
       key: keys.dataKey,
       data,
@@ -83,19 +95,23 @@ class Crypter {
   }
 
   decryptCtr({ key, data }) {
-    const [ciphertext, iv] = unserialize(data)
+    const { ciphertext, iv } = unserializeEncrypted(data)
     const decipher = crypto.createDecipheriv(ALG_CTR, key, iv)
-    return decipher.update(ciphertext, CIPHERTEXT_ENCODING, PLAINTEXT_ENCODING) +
-      decipher.final(PLAINTEXT_ENCODING)
+    return Buffer.concat([
+      decipher.update(ciphertext),
+      decipher.final()
+    ])
   }
 
   decryptGcm({ key, data }) {
-    const [ciphertext, iv, tag] = unserialize(data)
+    const { ciphertext, iv, tag } = unserializeEncrypted(data)
     const decipher = crypto.createDecipheriv(ALG_GCM, key, iv)
     decipher.setAuthTag(tag)
 
-    return decipher.update(ciphertext, CIPHERTEXT_ENCODING, PLAINTEXT_ENCODING) +
-      decipher.final(PLAINTEXT_ENCODING)
+    return Buffer.concat([
+      decipher.update(ciphertext),
+      decipher.final()
+    ])
   }
 
   decryptAes(...args) {
@@ -120,7 +136,7 @@ class Crypter {
 
     const hmacCalc = utils.calculateHmac(digest, keys.hmacKey, contents)
 
-    if (hmacCalc != hmac) {
+    if (!hmacCalc.equals(hmac)) {
       throw new Error(`Computed HMAC on ${name} does not match stored HMAC`)
     }
 

@@ -29,7 +29,8 @@ module.exports = {
     "no-unused-vars": "warn",
     "indent": "warn",
     "space-before-function-paren": "warn",
-    "no-multi-assign": "warn"
+    "no-multi-assign": "warn",
+    "max-len": "warn"
   },
   "env": {
     "mocha": true

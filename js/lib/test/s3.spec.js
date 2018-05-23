@@ -26,7 +26,7 @@ describe('s3 store', () => {
 
   const toObject = item => ({
     Key: store._key(item.name),
-    Body: Buffer.from(JSON.stringify(item)),
+    Body: store._serialize(item),
     VersionId: getVersionId(item) // simulate opaque version ids
   })
 
@@ -117,7 +117,15 @@ describe('s3 store', () => {
       const name = String(Math.ceil((i + 1) / 10))
       prevName = i ? String(Math.ceil(i / 10)) : name
       const version = name === prevName ? i % 10 : 0
-      return { name, version }
+      const id = getVersionId({ name, version })
+      return {
+        name,
+        version: String(version),
+        key: Buffer.from('some key' + id),
+        contents: Buffer.from('some ciphertext' + id),
+        hmac: Buffer.from('some hmac' + id),
+        digest: 'sha256',
+      }
     });
 
     mockListObjectVersions()
@@ -196,7 +204,7 @@ describe('s3 store', () => {
       AWS.mock('S3', 'putObject', (params, cb) => {
         params.Bucket.should.equal(bucket);
         params.Key.should.equal(folder + '/' + item.name);
-        params.Body.should.equal(JSON.stringify(item));
+        params.Body.should.deep.equal(store._serialize(item));
         put = true
         cb();
       });

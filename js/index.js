@@ -99,7 +99,7 @@ class Credstash {
       .then(version => utils.paddedInt(defaults.PAD_LEN, version + 1))
   }
 
-  putSecret(opts) {
+  async putSecret(opts) {
     const options = Object.assign({}, opts)
     const {
       name,
@@ -108,35 +108,45 @@ class Credstash {
       digest = defaults.DEFAULT_DIGEST,
       iv // optional
     } = options
+
     if (!name) {
-      return Promise.reject(new Error('name is a required parameter'))
+      throw new Error('name is a required parameter')
     }
 
     if (!secret) {
-      return Promise.reject(new Error('secret is a required parameter'))
+      throw new Error('secret is a required parameter')
+    }
+
+    if (!Buffer.isBuffer(secret)) {
+      throw new Error('expected "secret" to be a Buffer')
     }
 
     const version = utils.sanitizeVersion(options.version, 1) // optional
-    return this.kms.getEncryptionKey(context)
-      .catch((err) => {
-        if (err.code == 'NotFoundException') {
-          throw err
-        }
-        throw new Error(`Could not generate key using KMS key ${this.key}, error:${JSON.stringify(err, null, 2)}`)
-      })
-      .then(kmsData => this.crypter.encrypt({ digest, data: secret, kmsData, iv }))
-      .then(data => Object.assign({ name, version }, data))
-      .then(data => this.store.createSecret(data))
-      .catch((err) => {
-        if (err.code == 'ConditionalCheckFailedException') {
-          throw new Error(`${name} version ${version} is already in the credential store.`)
-        } else {
-          throw err
-        }
-      })
+    let kmsData
+    try {
+      kmsData = await this.kms.getEncryptionKey(context)
+    } catch(err) {
+      if (err.code == 'NotFoundException') {
+        throw err
+      }
+
+      throw new Error(`Could not generate key using KMS key ${this.key}, error:${JSON.stringify(err, null, 2)}`)
+    }
+
+    const data = await this.crypter.encrypt({ digest, data: secret, kmsData, iv })
+    const secretOpts = Object.assign({ name, version }, data)
+    try {
+      return await this.store.createSecret(secretOpts)
+    } catch(err) {
+      if (err.code == 'ConditionalCheckFailedException') {
+        throw new Error(`${name} version ${version} is already in the credential store.`)
+      } else {
+        throw err
+      }
+    }
   }
   decryptStash(stash, context) {
-    const key = utils.b64decode(stash.key)
+    const { key } = stash
     return this.kms.decrypt(key, context)
       .catch((err) => {
         let msg = `Decryption error: ${JSON.stringify(err, null, 2)}`
@@ -156,7 +166,7 @@ class Credstash {
       })
   }
 
-  getAllVersions(opts) {
+  async getAllVersions(opts) {
     const options = Object.assign({}, opts)
     const {
       name,
@@ -168,18 +178,17 @@ class Credstash {
       return Promise.reject(new Error('name is a required parameter'))
     }
 
-    return this.store.getAllVersions(name, { limit })
-      .then((results) => {
-        const dataKeyPromises = results.map(stash =>
-          this.decryptStash(stash, context)
-            .then(decryptedDataKey =>
-              Object.assign(stash, { decryptedDataKey })))
-        return Promise.all(dataKeyPromises)
-      }).then(stashes =>
-        stashes.map(stash => ({
-          version: stash.version,
-          secret: this.crypter.decrypt({ item: stash, kmsData: stash.decryptedDataKey }),
-        })))
+    const results = await this.store.getAllVersions(name, { limit })
+    const dataKeyPromises = results.map(async (stash) => {
+      const decryptedDataKey = await this.decryptStash(stash, context)
+      return Object.assign(stash, { decryptedDataKey })
+    })
+
+    const stashes = await Promise.all(dataKeyPromises)
+    return stashes.map(stash => ({
+      version: stash.version,
+      secret: this.crypter.decrypt({ item: stash, kmsData: stash.decryptedDataKey }),
+    }))
   }
 
   getSecret(opts) {
@@ -199,7 +208,7 @@ class Credstash {
 
     return func
       .then((stash) => {
-        if (!stash || !stash.key) {
+        if (!(stash && stash.key)) {
           throw new Error(`Item {'name': '${name}'} could not be found.`)
         }
         return Promise.all([

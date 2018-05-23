@@ -1,8 +1,25 @@
 
 const _ = require('lodash')
 const utils = require('./utils')
+const schema = require('./schema')
 
-const fromResult = ({ Body }) => JSON.parse(Body)
+const unserialize = buf => {
+  const raw = schema.Secret.decode(buf)
+  raw.digest = utils.keyByValue(schema.Digest, raw.digest)
+  return raw
+}
+
+const serialize = item => {
+  const { name, version, key, contents, hmac, digest } = item
+  return schema.Secret.encode({
+    name,
+    version: String(version),
+    key,
+    contents,
+    hmac,
+    digest: schema.Digest[digest],
+  })
+}
 
 const pageVersions = async ({ client, bucket }, opts={}) => {
   const { key, limit } = opts
@@ -16,7 +33,7 @@ const pageVersions = async ({ client, bucket }, opts={}) => {
 
   const getByVersion = async ({ VersionId }) => {
     const result = await client.getObject({ Bucket, Key: key, VersionId }).promise()
-    return fromResult(result)
+    return unserialize(result.Body)
   }
 
   const promiseContents = []
@@ -84,7 +101,7 @@ class Store {
 
     try {
       const result = await this.client.getObject(params).promise()
-      return fromResult(result)
+      return unserialize(result.Body)
     } catch (err) {
       if (utils.isNotFoundError(err)) return undefined
 
@@ -139,10 +156,14 @@ class Store {
     await this.client.putObject({
       Bucket: this.bucket,
       Key: this._key(name),
-      Body: JSON.stringify(item),
-      ContentType: 'application/json'
+      Body: this._serialize(item),
+      ContentType: 'application/octet-stream'
     })
     .promise()
+  }
+
+  _serialize(item) {
+    return serialize(item)
   }
 
   _key(name) {
@@ -164,4 +185,6 @@ class Store {
   }
 }
 
-module.exports = opts => new Store(opts)
+exports = module.exports = opts => new Store(opts)
+exports.serialize = serialize
+exports.unserialize = unserialize
