@@ -6,7 +6,7 @@ require('../../test/setup');
 
 const _ = require('lodash');
 
-const DynamoDb = require('../dynamoDb');
+const createDynamoDBStore = require('../dynamoDb');
 
 const AWS = require('aws-sdk-mock');
 
@@ -111,7 +111,7 @@ describe('dynamodb store', () => {
         TableName,
       });
 
-      dynamo = new DynamoDb(TableName, { region: 'us-east-1' });
+      dynamo = createDynamoDBStore(TableName, { region: 'us-east-1' });
       return dynamo.getAllSecretsAndVersions({ limit: 10 })
         .then((secrets) => {
           secrets.length.should.be.equal(items.length);
@@ -127,7 +127,7 @@ describe('dynamodb store', () => {
         TableName,
       });
 
-      dynamo = new DynamoDb(TableName, { region: 'us-east-1' });
+      dynamo = createDynamoDBStore(TableName, { region: 'us-east-1' });
       return dynamo.getAllVersions('', { limit: 10 })
         .then((secrets) => {
           secrets.length.should.be.equal(items.length);
@@ -143,7 +143,7 @@ describe('dynamodb store', () => {
         TableName,
       });
 
-      dynamo = new DynamoDb(TableName, { region: 'us-east-1' });
+      dynamo = createDynamoDBStore(TableName, { region: 'us-east-1' });
       return dynamo.getLatestVersion('')
         .then((res) => {
           expect(res).to.exist;
@@ -164,7 +164,7 @@ describe('dynamodb store', () => {
         cb(undefined, { Item: 'Success' });
       });
 
-      dynamo = new DynamoDb(TableName, { region: 'us-east-1' });
+      dynamo = createDynamoDBStore(TableName, { region: 'us-east-1' });
       return dynamo.getByVersion(name, version)
         .then((res) => {
           expect(res).to.equal('Success');
@@ -186,7 +186,7 @@ describe('dynamodb store', () => {
         params.Item.should.deep.equal(item);
         cb(undefined, 'Success');
       });
-      dynamo = new DynamoDb(TableName, { region: 'us-east-1' });
+      dynamo = createDynamoDBStore(TableName, { region: 'us-east-1' });
       return dynamo.createSecret(item)
         .then(res => res.should.equal('Success'));
     });
@@ -205,7 +205,7 @@ describe('dynamodb store', () => {
         cb(undefined, 'Success');
       });
 
-      dynamo = new DynamoDb(TableName, { region: 'us-east-1' });
+      dynamo = createDynamoDBStore(TableName, { region: 'us-east-1' });
       return dynamo.deleteSecret(name, version)
         .then((secret) => {
           expect(secret).to.exist;
@@ -268,7 +268,7 @@ describe('dynamodb store', () => {
         cb();
       });
 
-      dynamo = new DynamoDb(TableName, { region: 'us-east-1' });
+      dynamo = createDynamoDBStore(TableName, { region: 'us-east-1' });
       return dynamo.createTable();
     });
 
@@ -278,7 +278,7 @@ describe('dynamodb store', () => {
         expect(params).to.not.exist;
         cb();
       });
-      dynamo = new DynamoDb(TableName, { region: 'us-east-1' });
+      dynamo = createDynamoDBStore(TableName, { region: 'us-east-1' });
       return dynamo.createTable();
     });
 
@@ -289,7 +289,7 @@ describe('dynamodb store', () => {
         expect(params).to.not.exist;
         cb(new Error('Error'));
       });
-      dynamo = new DynamoDb(TableName, { region: 'us-east-1' });
+      dynamo = createDynamoDBStore(TableName, { region: 'us-east-1' });
       return dynamo.createTable()
         .then(() => {
           throw new Error('Should not reach here');
