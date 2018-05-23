@@ -262,11 +262,13 @@ class Credstash {
   }
 
   // alias
-  list() {
-    return this.listSecrets()
+  list(opts) {
+    return this.listSecrets(opts)
   }
 
-  listSecrets() {
+  listSecrets(opts={}) {
+    if (opts.name) return this.store.getAllVersions(opts.name)
+
     return this.store.getAllSecretsAndVersions()
       .then(res => res.slice().sort(utils.sortSecrets))
   }

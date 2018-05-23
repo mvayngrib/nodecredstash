@@ -251,6 +251,28 @@ credstash.deleteSecrets({name: 'Death Star vulnerability'})
 []
 ```
 
+### Cli
 
+Modeled after the original [https://github.com/fugue/credstash]
 
+```sh
+# templates
+nodecredstash put -p [profile] -r [region] -b [bucket] --folder [folder] -k [keyIdOrAlias] -v [version] [key] [value] [contextVar1=contextVal1]...[contextVarN=contextValN]
 
+nodecredstash get -p [profile] -r [region] -b [bucket] --folder [folder] -k [keyIdOrAlias] -v [version] -e [encoding] [key] [contextVar1=contextVal1]...[contextVarN=contextValN]
+
+# example
+nodecredstash put -p myprofile -r us-east-1 -b mybucket --folder secrets -k alias/credstash favcolor blue bill=ted excellent=adventure
+
+# get
+nodecredstash get -p myprofile -r us-east-1 -b mybucket --folder secrets -k alias/credstash favcolor bill=ted -e utf8 excellent=adventure
+
+# list all versions of a secret
+nodecredstash list -p myprofile -r us-east-1 -b mybucket --folder secrets -k alias/credstash favcolor
+
+# list all versions of all secrets
+nodecredstash list -p myprofile -r us-east-1 -b mybucket --folder secrets -k alias/credstash
+
+# put next version
+nodecredstash put -p myprofile -r us-east-1 -b mybucket --folder secrets -k alias/credstash -v 0000000000000000002 favcolor pink bill=ted excellent=adventure
+```

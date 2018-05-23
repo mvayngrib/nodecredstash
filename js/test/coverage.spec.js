@@ -5,7 +5,9 @@
 require('./setup');
 const glob = require('glob');
 
-const files = glob.sync('js/**/*.js', null);
+const files = glob.sync('js/**/*.js', {
+  ignore: 'js/cmd.js'
+});
 
 describe('coverage', () => {
   files.forEach((file) => {
