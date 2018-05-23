@@ -50,6 +50,7 @@ if (args.indexOf('junit') >= 0) {
  */
 if (args.indexOf('coverage') >= 0) {
   console.warn('coverage disabled at the moment!')
+  startMocha();
 
 //   const instrumenter = new istanbul.Instrumenter();
 //   const collector = new istanbul.Collector();

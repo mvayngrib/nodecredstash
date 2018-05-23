@@ -82,22 +82,26 @@ function DynamoDB(table, awsOpts) {
     return pageResults(docClient, docClient.scan, params)
   }
 
-  this.getLatestVersion = (name) => {
+  this.getLatestVersion = async (name) => {
     const params = createAllVersionsQuery(table, name)
     params.Limit = 1
 
-    return docClient.query(params).promise()
-      .then(({ Items }) => Items[0])
+    const { Items } = await docClient.query(params).promise()
+    return Items[0]
   }
 
-  this.getByVersion = (name, version) => {
+  this.getByVersion = async (name, version) => {
     const params = {
       TableName: table,
       Key: { name, version },
     }
 
-    return docClient.get(params).promise()
-      .then(({ Item }) => Item)
+    try {
+      const { Item } = await docClient.get(params).promise()
+      return Item
+    } catch (err) {
+      if (!utils.isNotFoundError(err)) throw err
+    }
   }
 
   this.createSecret = (item) => {
@@ -169,4 +173,4 @@ function DynamoDB(table, awsOpts) {
   }
 }
 
-module.exports = DynamoDB
+module.exports = opts => new DynamoDB(opts)

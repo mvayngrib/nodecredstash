@@ -90,7 +90,7 @@ function mockQueryScan(error, items, expectedParams) {
 }
 
 
-describe('dynmaodDb', () => {
+describe('dynamodb store', () => {
   let dynamo;
   let items;
   const TableName = 'credentials-store';

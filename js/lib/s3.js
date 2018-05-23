@@ -1,39 +1,32 @@
 
-// const splitPath = path => {
-//   const idx = path.indexOf('/')
-//   if (idx) {
-//     return {
-//       bucket: path.slice(0, idx),
-//       folder: path.slice(idx)
-//     }
-//   }
+const _ = require('lodash')
+const utils = require('./utils')
 
-//   return {
-//     bucket: path,
-//     folder: '/'
-//   }
-// }
+const fromResult = ({ Body }) => JSON.parse(Body)
 
-const flatten = arr => arr.reduce((all, batch) => all.concat(batch), []);
-
-async function pageVersions ({ client, bucket }, opts={}) {
-  const { key, limit=0 } = opts
+const pageVersions = async ({ client, bucket }, opts={}) => {
+  const { key, limit } = opts
   const Bucket = bucket
   const listParams = {
     Bucket,
-    KeyMarker: key,
-    MaxKeys: limit
+    KeyMarker: key
+  }
+
+  if (limit) listParams.MaxKeys = limit
+
+  const getByVersion = async ({ VersionId }) => {
+    const result = await client.getObject({ Bucket, Key: key, VersionId }).promise()
+    return fromResult(result)
   }
 
   const promiseContents = []
+
   let result
   let promiseVersions
   do {
     result = await client.listObjectVersions(listParams).promise()
-    promiseVersions = Promise.all(result.Versions.map(({ VersionId }) =>
-      client.getObject({ Bucket, Key: key, VersionId })))
-
-    promiseVersions.push(promiseVersions)
+    promiseVersions = Promise.all(result.Versions.map(getByVersion))
+    promiseContents.push(promiseVersions)
     if (result.NextKeyMarker && result.NextKeyMarker !== key) {
       break
     }
@@ -42,18 +35,17 @@ async function pageVersions ({ client, bucket }, opts={}) {
   } while (result.IsTruncated)
 
   const batches = await Promise.all(promiseContents)
-  return flatten(batches)
+  return _.flattenDeep(batches)
 }
 
-async function pageResults (s3, opts={}) {
+const pageResults = async (s3, opts={}) => {
   const { client, bucket } = s3
   const { prefix, limit=0 } = opts
   const Bucket = bucket
-  const listParams = {
-    Bucket,
-    Prefix: prefix,
-    MaxKeys: limit
-  }
+  const listParams = { Bucket }
+
+  if (prefix) listParams.Prefix = prefix
+  if (limit) listParams.MaxKeys = limit
 
   const promiseContents = []
   let result
@@ -68,7 +60,7 @@ async function pageResults (s3, opts={}) {
   } while (result.IsTruncated)
 
   const batches = await Promise.all(promiseContents)
-  return flatten(batches)
+  return _.flattenDeep(batches)
 }
 
 class S3 {
@@ -83,15 +75,21 @@ class S3 {
   async _get(name, version) {
     const params = {
       Bucket: this.bucket,
-      Key: [this.folder, name].join('/'),
+      Key: this._key(name)
     }
 
     if (typeof version !== 'undefined') {
       params.VersionId = version
     }
 
-    const { Body } = await this.client.getObject(params)
-    return JSON.parse(Body)
+    try {
+      const result = await this.client.getObject(params).promise()
+      return fromResult(result)
+    } catch (err) {
+      if (utils.isNotFoundError(err)) return undefined
+
+      throw err
+    }
   }
 
   // async _exists(name) {
@@ -114,7 +112,7 @@ class S3 {
 
   getAllVersions(name, opts) {
     const options = Object.assign({}, opts)
-    options.key = [this.folder, name].join('/')
+    options.key = this._key(name)
     return pageVersions(this, options)
   }
 
@@ -148,14 +146,14 @@ class S3 {
   }
 
   _key(name) {
-    return [this.folder, name].join('/')
+    return this.folder ? [this.folder, name].join('/') : name
   }
 
   async deleteSecret(name, version) {
     if (typeof version === 'undefined') {
       await this.client.deleteObject({
         Bucket: this.bucket,
-        Key: [this.folder, name, version].join('/'),
+        Key: this._key(name)
       })
       .promise()
 
@@ -166,4 +164,4 @@ class S3 {
   }
 }
 
-module.exports = S3
+module.exports = opts => new S3(opts)

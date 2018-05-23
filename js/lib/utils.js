@@ -2,8 +2,21 @@
 
 const crypto = require('crypto')
 const defaults = require('../defaults')
+const Errors = require('./errors')
 
-module.exports = {
+const utils = {
+  isNotFoundError(err) {
+    return err.code === 'ResourceNotFoundException' || err.code === 'NoSuchKey'
+  },
+
+  normalizeError(err) {
+    if (utils.isNotFoundError(err)) {
+      return new Errors.NotFound(err.message)
+    }
+
+    return err
+  },
+
   calculateHmac(digestArg, key, encrypted) {
     const digest = digestArg || defaults.DEFAULT_DIGEST
     // compute an HMAC using the hmac key and the ciphertext
@@ -30,7 +43,7 @@ module.exports = {
     }
 
     if (typeof sanitized == 'number') {
-      sanitized = this.paddedInt(defaults.PAD_LEN, sanitized)
+      sanitized = utils.paddedInt(defaults.PAD_LEN, sanitized)
     }
 
     sanitized = (sanitized == undefined) ? sanitized : `${sanitized}`
@@ -92,3 +105,5 @@ module.exports = {
     return doNext()
   },
 }
+
+module.exports = utils

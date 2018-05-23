@@ -2,12 +2,14 @@
 
 const debug = require('debug')('credstash')
 
-const DynamoDB = require('./lib/dynamoDb')
+const createDynamoDBStore = require('./lib/dynamoDb')
+const createS3Store = require('./lib/s3')
 const KMS = require('./lib/kms')
 
 const { Crypter } = require('./lib/crypter')
 const defaults = require('./defaults')
 const utils = require('./lib/utils')
+const Errors = require('./lib/errors')
 
 class Credstash {
   constructor({ kms, store, key, crypter }) {
@@ -294,14 +296,14 @@ class Credstash {
   }
 }
 
-module.exports = function (mainConfig) {
+exports = module.exports = function (mainConfig) {
   const config = Object.assign({}, mainConfig)
   let { store } = config
   // backwards compat
   if (!store && (config.table || config.dynamoOpts)) {
     const table = config.table || defaults.DEFAULT_TABLE
     const ddbOpts = Object.assign({}, config.awsOpts, config.dynamoOpts)
-    store = new DynamoDB(table, ddbOpts)
+    store = createDynamoDBStore(table, ddbOpts)
   }
 
   if (!store) {
@@ -316,4 +318,10 @@ module.exports = function (mainConfig) {
   return new Credstash({ key: kmsKey, kms, store, crypter })
 }
 
-module.exports.Credstash = Credstash
+exports.Credstash = Credstash
+exports.Errors = Errors
+exports.utils = utils
+exports.store = {
+  dynamodb: createDynamoDBStore,
+  s3: createS3Store
+}

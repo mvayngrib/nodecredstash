@@ -3,20 +3,39 @@
 /* eslint-disable no-unused-expressions, no-undef */
 
 require('./setup')
+
 const AWS = require('aws-sdk-mock')
-
-const Credstash = require('../index')
+const rawAWS = require('aws-sdk')
+const createCredstash = require('../')
 const encryption = require('./utils/encryption')
-
+const createS3Store = require('../lib/s3')
 const crypter = require('../lib/crypter')
 const defaults = require('../defaults')
 
+const alphabetical = (a, b) => {
+  if (a < b) return -1
+  if (a > b) return 1
+
+  return 0
+}
 
 describe('index', () => {
-  const defCredstash = options => new Credstash(Object.assign({
-    awsOpts: { region: 'us-east-1' },
+  const awsOpts = { region: 'us-east-1' }
+  const defCredstash = options => createCredstash(Object.assign({
+    awsOpts,
     table: defaults.DEFAULT_TABLE
   }, options))
+
+  const bucket = 'mybucket'
+  const folder = 'myfolder'
+  const defS3Credstash = options => createCredstash({
+    store: createS3Store({
+      client: new rawAWS.S3(awsOpts),
+      bucket,
+      folder,
+    }),
+    ...options
+  })
 
   beforeEach(() => {
     AWS.restore()
@@ -131,32 +150,56 @@ describe('index', () => {
   })
 
   describe('#getHighestVersion', () => {
-    it('should return the highest version', () => {
-      const Items = [
-        {
-          name: 'name1',
-          version: 'version1',
-        },
-        {
-          name: 'name1',
-          version: 'version2',
-        },
-      ]
-      AWS.mock('DynamoDB.DocumentClient', 'query', (params, cb) => cb(undefined, { Items }))
+    const Items = [
+      {
+        name: 'name1',
+        version: 'version1',
+      },
+      {
+        name: 'name1',
+        version: 'version2',
+      },
+    ]
+
+    it('should return the highest version (dynamodb)', async () => {
+      AWS.mock('DynamoDB.DocumentClient', 'query', (params, cb) => {
+        cb(undefined, {
+          Items: Items.slice()
+            .sort((a, b) => alphabetical(a.version, b.version))
+            .reverse()
+        })
+      })
+
       const credstash = defCredstash()
-      return credstash.getHighestVersion({
+      const version = await credstash.getHighestVersion({
         name: 'name1',
       })
-      .then(version => version.should.equal(Items[0].version))
+
+      version.should.equal(Items[1].version)
     })
 
-    it('should default to version 0', () => {
+    it('should return the highest version (s3)', async () => {
+      const highest = Items[1]
+      AWS.mock('S3', 'getObject', (params, cb) => cb(undefined, {
+        Body: Buffer.from(JSON.stringify(highest))
+      }))
+
+      const s3cred = defS3Credstash()
+      const version = await s3cred.getHighestVersion({
+        name: 'name1'
+      })
+
+      version.should.equal(highest.version)
+    })
+
+    it('should default to version 0', async () => {
       AWS.mock('DynamoDB.DocumentClient', 'query', (params, cb) => cb(undefined, { Items: [] }))
       const credstash = defCredstash()
-      return credstash.getHighestVersion({
+      const version = await credstash.getHighestVersion({
         name: 'name',
       })
-        .then(version => version.should.equal(0))
+
+      version.should.equal(0)
     })
 
     it('should request by name', () => {

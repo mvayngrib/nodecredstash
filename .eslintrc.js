@@ -13,6 +13,7 @@ module.exports = {
     // doesn't work in node v4 :(
     "strict": "off",
     "prefer-rest-params": "off",
+    "prefer-template": "warn",
     "react/require-extension": "off",
     "import/no-extraneous-dependencies": "off",
     "class-methods-use-this": "off",
@@ -27,7 +28,8 @@ module.exports = {
     "no-underscore-dangle": "off",
     "no-unused-vars": "warn",
     "indent": "warn",
-    "space-before-function-paren": "warn"
+    "space-before-function-paren": "warn",
+    "no-multi-assign": "warn"
   },
   "env": {
     "mocha": true
