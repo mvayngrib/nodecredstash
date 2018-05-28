@@ -28,6 +28,7 @@ module.exports = {
     "arrow-parens": "off",
     "no-underscore-dangle": "off",
     "no-unused-vars": "warn",
+    "no-return-await": "warn",
     "indent": "warn",
     "space-before-function-paren": "warn",
     "no-multi-assign": "warn",

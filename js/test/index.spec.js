@@ -278,7 +278,8 @@ describe('index', () => {
       let created
       let updated
       let lastVersion
-      let versions = ['0000000000000000001', '0000000000000000002']
+      const versions = ['0000000000000000001', '0000000000000000002']
+      const realOne = Object.assign({}, encryption.credstashKey)
       AWS.mock('DynamoDB.DocumentClient', 'query', (params, cb) => {
         if (!created) {
           return cb(undefined, { Items: [] })
@@ -302,7 +303,6 @@ describe('index', () => {
       AWS.mock('KMS', 'generateDataKey', (params, cb) => cb(undefined, realOne.kmsData))
 
       const credstash = defCredstash()
-      const realOne = Object.assign({}, encryption.credstashKey)
       // create
       await credstash.update({ name: realOne.name, secret: realOne.plaintext })
       created.should.equal(true)
