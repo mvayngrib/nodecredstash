@@ -1,5 +1,5 @@
 
-const _ = require('lodash')
+const flattenDeep = require('lodash/flattenDeep')
 const utils = require('./utils')
 const schema = require('./schema')
 
@@ -61,7 +61,7 @@ const pageVersions = async ({ client, bucket }, opts={}) => {
   } while (result.IsTruncated)
 
   const batches = await Promise.all(promiseContents)
-  return _.flattenDeep(batches)
+  return flattenDeep(batches)
 }
 
 const pageResults = async (s3, opts={}) => {
@@ -86,7 +86,7 @@ const pageResults = async (s3, opts={}) => {
   } while (result.IsTruncated)
 
   const batches = await Promise.all(promiseContents)
-  return _.flattenDeep(batches)
+  return flattenDeep(batches)
 }
 
 class Store {

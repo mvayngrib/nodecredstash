@@ -274,6 +274,42 @@ describe('index', () => {
         .then(version => version.should.equal('0000000000000000002'))
     })
 
+    it('should create/update with incremented version via update()', async () => {
+      let created
+      let updated
+      let lastVersion
+      let versions = ['0000000000000000001', '0000000000000000002']
+      AWS.mock('DynamoDB.DocumentClient', 'query', (params, cb) => {
+        if (!created) {
+          return cb(undefined, { Items: [] })
+        }
+
+        cb(undefined, { Items: [{ version: lastVersion }] })
+      })
+
+      AWS.mock('DynamoDB.DocumentClient', 'put', (params, cb) => {
+        if (!created) {
+          created = true
+        } else {
+          updated = true
+        }
+
+        lastVersion = versions.shift()
+        params.Item.version.should.equal(lastVersion)
+        cb()
+      })
+
+      AWS.mock('KMS', 'generateDataKey', (params, cb) => cb(undefined, realOne.kmsData))
+
+      const credstash = defCredstash()
+      const realOne = Object.assign({}, encryption.credstashKey)
+      // create
+      await credstash.update({ name: realOne.name, secret: realOne.plaintext })
+      created.should.equal(true)
+      await credstash.update({ name: realOne.name, secret: realOne.plaintext })
+      updated.should.equal(true)
+    })
+
     it('should accept name as a param', () => {
       const name = 'name'
       AWS.mock('DynamoDB.DocumentClient', 'query', (params, cb) => {

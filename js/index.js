@@ -1,6 +1,7 @@
 'use strict'
 
 const debug = require('debug')('credstash')
+const extend = require('lodash/extend')
 
 const createDynamoDBStore = require('./lib/dynamoDb')
 const createS3Store = require('./lib/s3')
@@ -94,6 +95,12 @@ class Credstash {
     }
 
     throw new Error(`Can not autoincrement version. The current version: ${version} is not an int`)
+  }
+
+  // create or update
+  async update(opts) {
+    const version = await this.incrementVersion(opts)
+    return await this.putSecret(extend({ version }, opts))
   }
 
   // alias
